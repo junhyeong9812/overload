@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: overload
+  threads:
+    virtual:
+      enabled: true  # Virtual Threads 활성화
+
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 200
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      show-details: always
