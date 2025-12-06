@@ -1,0 +1,76 @@
+plugins {
+    id 'application'
+}
+
+// Java 25 (루트 기본값 21 오버라이드)
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+// Preview features 활성화 (Structured Concurrency 등)
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--enable-preview']
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs += ['--enable-preview']
+}
+
+tasks.withType(Test).configureEach {
+    jvmArgs += ['--enable-preview']
+}
+
+application {
+    mainClass = 'io.github.junhyeong9812.overload.cli.Main'
+}
+
+dependencies {
+    // 핵심 엔진
+    implementation project(':overload-core')
+
+    // CLI 프레임워크
+    implementation 'info.picocli:picocli:4.7.6'
+    annotationProcessor 'info.picocli:picocli-codegen:4.7.6'
+
+    // YAML 파싱 (설정 파일)
+    implementation 'org.yaml:snakeyaml:2.3'
+
+    // 터미널 색상
+    implementation 'org.fusesource.jansi:jansi:2.4.1'
+
+    // 테스트
+    testImplementation platform('org.junit:junit-bom:5.11.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core:3.26.3'
+}
+
+// ============================================
+// Fat JAR 설정 (모든 의존성 포함)
+// ============================================
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': application.mainClass,
+                'Implementation-Title': 'Overload CLI',
+                'Implementation-Version': project.version
+        )
+    }
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    archiveBaseName = 'overload'
+    archiveClassifier = 'all'
+}
+
+// 실행 시 UTF-8 설정
+run {
+    standardInput = System.in
+    jvmArgs += ['-Dfile.encoding=UTF-8']
+}
