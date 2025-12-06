@@ -59,9 +59,16 @@ public class LatencyHistogram {
   /**
    * 지연 시간을 기록한다.
    *
-   * @param latencyMs 지연 시간 (밀리초)
+   * <p>음수 값은 무시되며, 1000ms 이상은 오버플로우 버킷에 기록된다.
+   *
+   * @param latencyMs 지연 시간 (밀리초), 음수는 무시됨
    */
   public void record(long latencyMs) {
+    // 음수 값은 무시
+    if (latencyMs < 0) {
+      return;
+    }
+
     totalCount.increment();
     totalSum.add(latencyMs);
 
@@ -70,7 +77,7 @@ public class LatencyHistogram {
 
     if (latencyMs >= MAX_TRACKABLE_MS) {
       overflowBucket.increment();
-    } else if (latencyMs >= 0) {
+    } else {
       buckets[(int) latencyMs].increment();
     }
   }
