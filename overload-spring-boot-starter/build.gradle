@@ -1,0 +1,74 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Overload Spring Boot Starter - Web UI Dashboard with @EnableOverload'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // Core 모듈
+    api project(':overload-core')
+
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // Optional: Security
+    compileOnly 'org.springframework.boot:spring-boot-starter-security'
+
+    // Configuration Processor
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // 테스트
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// Maven Central 배포 설정
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            pom {
+                name = 'Overload Spring Boot Starter'
+                description = 'Spring Boot Starter for Overload Load Testing Dashboard'
+                url = 'https://github.com/junhyeong9812/overload'
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'junhyeong9812'
+                        name = 'Junhyeong Park'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/junhyeong9812/overload.git'
+                    developerConnection = 'scm:git:ssh://github.com/junhyeong9812/overload.git'
+                    url = 'https://github.com/junhyeong9812/overload'
+                }
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
+}
