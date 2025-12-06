@@ -1,0 +1,87 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+    id 'tech.yanand.maven-central-publish' version '1.2.0'
+}
+
+// Java 21 (루트에서 상속, 명시적 선언)
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+dependencies {
+    // 외부 의존성 없음 - 순수 JDK만 사용
+
+    // 테스트
+    testImplementation platform('org.junit:junit-bom:5.11.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core:3.26.3'
+}
+
+// ============================================
+// Maven Central 배포 설정
+// ============================================
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            groupId = 'io.github.junhyeong9812'
+            artifactId = 'overload-core'
+            version = project.version
+
+            pom {
+                name = 'Overload Core'
+                description = 'High-performance load testing engine using Java Virtual Threads'
+                url = 'https://github.com/junhyeong9812/overload'
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'junhyeong9812'
+                        name = 'Junhyeong Park'
+                        email = 'junhyeong9812@gmail.com'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/junhyeong9812/overload.git'
+                    developerConnection = 'scm:git:ssh://github.com:junhyeong9812/overload.git'
+                    url = 'https://github.com/junhyeong9812/overload'
+                }
+            }
+        }
+    }
+}
+
+signing {
+    def signingKeyId = findProperty('signing.keyId') ?: System.getenv('SIGNING_KEY_ID')
+    def signingKey = findProperty('signing.key') ?: System.getenv('GPG_SIGNING_KEY')
+    def signingPassword = findProperty('signing.password') ?: System.getenv('SIGNING_PASSWORD')
+
+    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+    sign publishing.publications.mavenJava
+}
+
+mavenCentralPublish {
+    authToken = System.getenv('MAVEN_CENTRAL_TOKEN')
+    publishingType = 'USER_MANAGED'
+}
+
+// Javadoc 인코딩 설정
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
