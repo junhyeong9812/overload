@@ -5,7 +5,9 @@ import io.github.junhyeong9812.overload.core.http.domain.HttpRequest;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult.ErrorType;
 
+import java.io.IOException;
 import java.net.ConnectException;
+import java.net.SocketException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
@@ -113,6 +115,22 @@ public class JdkHttpClient implements HttpClientPort {
     } catch (ConnectException e) {
       long latency = System.currentTimeMillis() - startTime;
       return new RequestResult.Failure(e.getMessage(), ErrorType.CONNECTION_REFUSED, latency);
+
+    } catch (SocketException e) {
+      long latency = System.currentTimeMillis() - startTime;
+      // Connection reset, Broken pipe 등
+      return new RequestResult.Failure(e.getMessage(), ErrorType.CONNECTION_RESET, latency);
+
+    } catch (InterruptedException e) {
+      // Thread interrupt 상태 복원
+      Thread.currentThread().interrupt();
+      long latency = System.currentTimeMillis() - startTime;
+      return new RequestResult.Failure("Request interrupted", ErrorType.UNKNOWN, latency);
+
+    } catch (IOException e) {
+      long latency = System.currentTimeMillis() - startTime;
+      String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+      return new RequestResult.Failure(message, ErrorType.UNKNOWN, latency);
 
     } catch (Exception e) {
       long latency = System.currentTimeMillis() - startTime;
