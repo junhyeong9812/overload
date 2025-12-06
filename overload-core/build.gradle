@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
-    id 'tech.yanand.maven-central-publish' version '1.2.0'
+    id 'tech.yanand.maven-central-publish'
 }
 
 // Java 21 (루트에서 상속, 명시적 선언)
@@ -75,7 +75,7 @@ signing {
     sign publishing.publications.mavenJava
 }
 
-mavenCentralPublish {
+mavenCentral {
     authToken = System.getenv('MAVEN_CENTRAL_TOKEN')
     publishingType = 'USER_MANAGED'
 }

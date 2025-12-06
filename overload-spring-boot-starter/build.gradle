@@ -1,5 +1,8 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+    id 'tech.yanand.maven-central-publish'
 }
 
 description = 'Overload Spring Boot Starter - Web UI Dashboard with @EnableOverload'
@@ -8,6 +11,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    withSourcesJar()    // Maven Central 필수
+    withJavadocJar()    // Maven Central 필수
 }
 
 dependencies {
@@ -34,11 +39,18 @@ test {
     useJUnitPlatform()
 }
 
+// ============================================
 // Maven Central 배포 설정
+// ============================================
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+
+            groupId = 'io.github.junhyeong9812'
+            artifactId = 'overload-spring-boot-starter'
+            version = project.version
 
             pom {
                 name = 'Overload Spring Boot Starter'
@@ -56,12 +68,13 @@ publishing {
                     developer {
                         id = 'junhyeong9812'
                         name = 'Junhyeong Park'
+                        email = 'junhyeong9812@gmail.com'
                     }
                 }
 
                 scm {
                     connection = 'scm:git:git://github.com/junhyeong9812/overload.git'
-                    developerConnection = 'scm:git:ssh://github.com/junhyeong9812/overload.git'
+                    developerConnection = 'scm:git:ssh://github.com:junhyeong9812/overload.git'
                     url = 'https://github.com/junhyeong9812/overload'
                 }
             }
@@ -70,5 +83,21 @@ publishing {
 }
 
 signing {
+    def signingKeyId = findProperty('signing.keyId') ?: System.getenv('SIGNING_KEY_ID')
+    def signingKey = findProperty('signing.key') ?: System.getenv('GPG_SIGNING_KEY')
+    def signingPassword = findProperty('signing.password') ?: System.getenv('SIGNING_PASSWORD')
+
+    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign publishing.publications.mavenJava
+}
+
+mavenCentral {
+    authToken = System.getenv('MAVEN_CENTRAL_TOKEN')
+    publishingType = 'USER_MANAGED'
+}
+
+// Javadoc 인코딩 설정
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
 }
