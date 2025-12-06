@@ -3,6 +3,8 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id 'tech.yanand.maven-central-publish'
+    id 'org.springframework.boot' version '3.5.8' apply false
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 description = 'Overload Spring Boot Starter - Web UI Dashboard with @EnableOverload'
@@ -11,8 +13,14 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
-    withSourcesJar()    // Maven Central 필수
-    withJavadocJar()    // Maven Central 필수
+    withSourcesJar()
+    withJavadocJar()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.8'
+    }
 }
 
 dependencies {

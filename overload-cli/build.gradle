@@ -5,7 +5,8 @@ plugins {
 // Java 25 (루트 기본값 21 오버라이드)
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+//        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -51,6 +52,8 @@ dependencies {
 // ============================================
 
 jar {
+
+    dependsOn ':overload-core:jar'
     manifest {
         attributes(
                 'Main-Class': application.mainClass,
