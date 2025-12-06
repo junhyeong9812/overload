@@ -1,1 +1,5 @@
 rootProject.name = 'overload'
+
+include 'overload-core'
+include 'overload-cli'
+include 'overload-web'

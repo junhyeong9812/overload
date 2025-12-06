@@ -1,44 +1,36 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.0'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'idea'
 }
 
-group = 'io.github.junhyeong9812'
-version = '0.0.1-SNAPSHOT'
-description = 'High-performance HTTP load testing tool powered by Java Virtual Threads'
+allprojects {
+    group = 'io.github.junhyeong9812'
+    version = '0.1.0-SNAPSHOT'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+    repositories {
+        mavenCentral()
     }
 }
 
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    // Spring
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-
-    // Lombok
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-
-    // Test
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
+// 루트 프로젝트는 빌드 산출물 없음
+tasks.named('jar') {
+    enabled = false
 }
