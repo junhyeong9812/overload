@@ -2,6 +2,7 @@ package io.github.junhyeong9812.overload.core.callback;
 
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 진행 상황을 로깅하는 기본 콜백 구현체.
@@ -14,6 +15,7 @@ import java.lang.System.Logger.Level;
  *   <li>System.Logger 사용 - SLF4J, Log4j 등과 자동 연동</li>
  *   <li>로깅 간격 설정 - 기본 10% 단위</li>
  *   <li>100% 완료 시 항상 로깅</li>
+ *   <li>스레드 안전 - AtomicInteger 사용</li>
  * </ul>
  *
  * <p><b>사용 예시:</b>
@@ -37,7 +39,7 @@ public class LoggingProgressCallback implements ProgressCallback {
   private static final int DEFAULT_LOG_INTERVAL_PERCENT = 10;
 
   private final int logIntervalPercent;
-  private volatile int lastLoggedPercent = -1;
+  private final AtomicInteger lastLoggedIntervalIndex = new AtomicInteger(-1);
 
   /**
    * 기본 로깅 간격(10%)으로 LoggingProgressCallback을 생성한다.
@@ -63,6 +65,7 @@ public class LoggingProgressCallback implements ProgressCallback {
    *
    * <p>지정된 간격마다 진행 상황을 로깅한다.
    * 100% 완료 시 항상 로깅한다.
+   * 스레드 안전하게 동작하며, 중복 로깅을 방지한다.
    */
   @Override
   public void onProgress(int completed, int total) {
@@ -71,20 +74,27 @@ public class LoggingProgressCallback implements ProgressCallback {
     }
 
     int currentPercent = (int) ((double) completed / total * 100);
+    int currentIntervalIndex = currentPercent / logIntervalPercent;
 
-    // 100% 완료 시 항상 로깅
+    // 100% 완료 시 항상 로깅 (특별 처리)
     if (completed == total) {
-      logProgress(completed, total, currentPercent);
+      // 마지막 로깅이 100% 구간이 아니었다면 로깅
+      int lastIndex = lastLoggedIntervalIndex.get();
+      int completeIndex = 100 / logIntervalPercent;
+      if (lastIndex < completeIndex) {
+        if (lastLoggedIntervalIndex.compareAndSet(lastIndex, completeIndex)) {
+          logProgress(completed, total, currentPercent);
+        }
+      }
       return;
     }
 
-    // 간격 단위로 로깅 (중복 방지)
-    int intervalIndex = currentPercent / logIntervalPercent;
-    int lastIntervalIndex = lastLoggedPercent / logIntervalPercent;
-
-    if (intervalIndex > lastIntervalIndex || lastLoggedPercent < 0) {
-      logProgress(completed, total, currentPercent);
-      lastLoggedPercent = currentPercent;
+    // CAS를 사용하여 중복 로깅 방지
+    int lastIndex = lastLoggedIntervalIndex.get();
+    if (currentIntervalIndex > lastIndex) {
+      if (lastLoggedIntervalIndex.compareAndSet(lastIndex, currentIntervalIndex)) {
+        logProgress(completed, total, currentPercent);
+      }
     }
   }
 
@@ -102,6 +112,6 @@ public class LoggingProgressCallback implements ProgressCallback {
    * <p>새로운 테스트 시작 전에 호출할 수 있다.
    */
   public void reset() {
-    lastLoggedPercent = -1;
+    lastLoggedIntervalIndex.set(-1);
   }
 }
