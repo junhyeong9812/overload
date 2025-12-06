@@ -1,15 +1,12 @@
 package io.github.junhyeong9812.overload.core.metric.application;
 
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
+import io.github.junhyeong9812.overload.core.metric.domain.LatencyHistogram;
 import io.github.junhyeong9812.overload.core.metric.domain.Percentiles;
 import io.github.junhyeong9812.overload.core.metric.domain.TestResult;
 import io.github.junhyeong9812.overload.core.metric.domain.TestResult.LatencyStats;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -40,19 +37,24 @@ import java.util.concurrent.atomic.LongAdder;
  * TestResult testResult = aggregator.aggregate();
  * }</pre>
  *
+ * <p><b>성능:</b>
+ * {@link LatencyHistogram}을 사용하여 O(1) 시간 복잡도로 메트릭을 기록한다.
+ * 대량의 요청(100,000+)에서도 효율적으로 동작한다.
+ *
  * @author junhyeong9812
  * @since 1.0.0
  * @see TestResult
+ * @see LatencyHistogram
  */
 public class MetricAggregator {
 
   private final LongAdder totalRequests = new LongAdder();
   private final LongAdder successCount = new LongAdder();
   private final LongAdder failCount = new LongAdder();
-  private final List<Long> latencies = new CopyOnWriteArrayList<>();
+  private final LatencyHistogram latencyHistogram = new LatencyHistogram();
 
-  private long startTime;
-  private long endTime;
+  private volatile long startTime;
+  private volatile long endTime;
 
   /**
    * 테스트 시작 시간을 기록한다.
@@ -72,12 +74,13 @@ public class MetricAggregator {
    * 요청 결과를 기록한다.
    *
    * <p>이 메서드는 스레드 안전하며, 여러 Virtual Thread에서 동시에 호출 가능하다.
+   * O(1) 시간 복잡도로 동작한다.
    *
    * @param result 기록할 요청 결과
    */
   public void record(RequestResult result) {
     totalRequests.increment();
-    latencies.add(result.latencyMs());
+    latencyHistogram.record(result.latencyMs());
 
     if (result instanceof RequestResult.Success success) {
       if (success.isHttpSuccess()) {
@@ -114,46 +117,23 @@ public class MetricAggregator {
    * 지연 시간 통계를 계산한다.
    */
   private LatencyStats calculateLatencyStats() {
-    if (latencies.isEmpty()) {
+    if (latencyHistogram.getCount() == 0) {
       return LatencyStats.empty();
     }
 
-    List<Long> sorted = new ArrayList<>(latencies);
-    Collections.sort(sorted);
+    long min = latencyHistogram.getMin();
+    long max = latencyHistogram.getMax();
+    double avg = latencyHistogram.getMean();
 
-    long min = sorted.getFirst();
-    long max = sorted.getLast();
-    double avg = sorted.stream()
-        .mapToLong(Long::longValue)
-        .average()
-        .orElse(0);
-
-    Percentiles percentiles = calculatePercentiles(sorted);
+    Percentiles percentiles = new Percentiles(
+        latencyHistogram.getPercentile(50),
+        latencyHistogram.getPercentile(90),
+        latencyHistogram.getPercentile(95),
+        latencyHistogram.getPercentile(99),
+        min,
+        max
+    );
 
     return new LatencyStats(min, max, avg, percentiles);
-  }
-
-  /**
-   * 백분위수를 계산한다.
-   */
-  private Percentiles calculatePercentiles(List<Long> sorted) {
-    int size = sorted.size();
-
-    return new Percentiles(
-        sorted.get(percentileIndex(size, 0.50)),
-        sorted.get(percentileIndex(size, 0.90)),
-        sorted.get(percentileIndex(size, 0.95)),
-        sorted.get(percentileIndex(size, 0.99)),
-        sorted.getFirst(),
-        sorted.getLast()
-    );
-  }
-
-  /**
-   * 백분위수 인덱스를 계산한다.
-   */
-  private int percentileIndex(int size, double percentile) {
-    int index = (int) Math.ceil(size * percentile) - 1;
-    return Math.max(0, Math.min(index, size - 1));
   }
 }
