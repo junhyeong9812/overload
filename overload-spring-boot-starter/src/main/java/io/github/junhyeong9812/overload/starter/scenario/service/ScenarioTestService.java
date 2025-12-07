@@ -17,8 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 시나리오 테스트 실행 서비스.
  *
- * <p>시나리오 테스트를 비동기로 실행하고 WebSocket으로 진행 상황을 전송한다.
- *
  * @author junhyeong9812
  * @since 1.0.0
  */
@@ -47,13 +45,10 @@ public class ScenarioTestService {
   public String startTest(ScenarioRequest request) {
     String testId = UUID.randomUUID().toString().substring(0, 8);
 
-    // Request → Scenario 변환
     Scenario scenario = convertToScenario(request);
 
-    // 진행 중 표시
     runningTests.put(testId, scenario.name());
 
-    // 비동기 실행
     Thread.startVirtualThread(() -> {
       try {
         AtomicInteger successCount = new AtomicInteger(0);
@@ -66,11 +61,9 @@ public class ScenarioTestService {
             failCount.incrementAndGet();
           }
 
-          // WebSocket으로 진행 상황 전송
           String lastStepId = result.stepResults().isEmpty()
               ? ""
               : result.stepResults().get(result.stepResults().size() - 1).stepId();
-          boolean lastStepSuccess = result.success();
 
           ScenarioProgressMessage message = ScenarioProgressMessage.of(
               testId,
@@ -79,7 +72,7 @@ public class ScenarioTestService {
               successCount.get(),
               failCount.get(),
               lastStepId,
-              lastStepSuccess
+              result.success()
           );
 
           messagingTemplate.convertAndSend("/topic/scenario/" + testId, message);
@@ -93,11 +86,9 @@ public class ScenarioTestService {
             callback
         );
 
-        // 완료 처리
         completedTests.put(testId, result);
         runningTests.remove(testId);
 
-        // 완료 메시지 전송
         ScenarioResponse response = ScenarioResponse.from(testId, "COMPLETED", result);
         messagingTemplate.convertAndSend("/topic/scenario/" + testId + "/complete", response);
 
@@ -118,12 +109,10 @@ public class ScenarioTestService {
    * @return 테스트 응답 (없으면 null)
    */
   public ScenarioResponse getResult(String testId) {
-    // 진행 중인 테스트
     if (runningTests.containsKey(testId)) {
       return ScenarioResponse.running(testId, runningTests.get(testId), 0, 0);
     }
 
-    // 완료된 테스트
     ScenarioTestResult result = completedTests.get(testId);
     if (result != null) {
       return ScenarioResponse.from(testId, "COMPLETED", result);
@@ -141,9 +130,6 @@ public class ScenarioTestService {
     return Map.copyOf(runningTests);
   }
 
-  /**
-   * ScenarioRequest를 Scenario 도메인 객체로 변환한다.
-   */
   private Scenario convertToScenario(ScenarioRequest request) {
     var steps = request.steps().stream()
         .map(this::convertToStep)
@@ -165,9 +151,6 @@ public class ScenarioTestService {
     );
   }
 
-  /**
-   * ScenarioStepRequest를 ScenarioStep 도메인 객체로 변환한다.
-   */
   private ScenarioStep convertToStep(ScenarioStepRequest request) {
     HttpMethod method;
     try {
