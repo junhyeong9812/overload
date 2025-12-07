@@ -352,6 +352,25 @@ overload/
 | [overload-starter 설계](docs/implementation/overload-starter.md) | Starter 모듈 상세 설계 |
 
 ---
+⚠️ Usage Disclaimer
+This tool is intended *only* for performance testing of services you own
+or are explicitly authorized to test.
+
+Unauthorized load testing against external systems may be illegal
+and subject to criminal charges.
+
+By using Overload, you agree that you are responsible for the usage and
+compliance with applicable laws and regulations.
+
+⚠️ 사용 주의사항
+Overload는 사용자 본인이 소유하거나 명시적 허가를 받은 서버에 대한
+성능/부하 테스트 목적에만 사용해야 합니다.
+
+허가 없이 타인 서비스에 부하 테스트를 수행하면
+관련 법률에 따라 민형사 처벌 대상이 될 수 있습니다.
+
+본 도구의 사용으로 인해 발생하는 모든 책임은 사용자에게 있습니다.
+---
 
 ## 기여
 
