@@ -61,12 +61,12 @@ class RequestResultTest {
     void createFailure() {
       RequestResult.Failure failure = new RequestResult.Failure(
           "Connection timed out",
-          RequestResult.ErrorType.TIMEOUT,
+          ErrorType.TIMEOUT,
           5000
       );
 
       assertThat(failure.errorMessage()).isEqualTo("Connection timed out");
-      assertThat(failure.errorType()).isEqualTo(RequestResult.ErrorType.TIMEOUT);
+      assertThat(failure.errorType()).isEqualTo(ErrorType.TIMEOUT);
       assertThat(failure.latencyMs()).isEqualTo(5000);
     }
 
@@ -75,7 +75,7 @@ class RequestResultTest {
     void implementsRequestResult() {
       RequestResult result = new RequestResult.Failure(
           "error",
-          RequestResult.ErrorType.UNKNOWN,
+          ErrorType.UNKNOWN,
           100
       );
 
@@ -91,13 +91,13 @@ class RequestResultTest {
     @Test
     @DisplayName("모든 오류 타입이 정의되어 있다")
     void allErrorTypesDefined() {
-      RequestResult.ErrorType[] types = RequestResult.ErrorType.values();
+      ErrorType[] types = ErrorType.values();
 
       assertThat(types).containsExactly(
-          RequestResult.ErrorType.TIMEOUT,
-          RequestResult.ErrorType.CONNECTION_REFUSED,
-          RequestResult.ErrorType.CONNECTION_RESET,
-          RequestResult.ErrorType.UNKNOWN
+          ErrorType.TIMEOUT,
+          ErrorType.CONNECTION_REFUSED,
+          ErrorType.CONNECTION_RESET,
+          ErrorType.UNKNOWN
       );
     }
   }
@@ -112,7 +112,7 @@ class RequestResultTest {
       RequestResult success = new RequestResult.Success(200, 100);
       RequestResult failure = new RequestResult.Failure(
           "timeout",
-          RequestResult.ErrorType.TIMEOUT,
+          ErrorType.TIMEOUT,
           5000
       );
 
