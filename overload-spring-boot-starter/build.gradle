@@ -27,6 +27,9 @@ dependencies {
     // Core 모듈
     api project(':overload-core')
 
+    // Scenario 모듈
+    api project(':overload-scenario')
+
     // Spring Boot
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
