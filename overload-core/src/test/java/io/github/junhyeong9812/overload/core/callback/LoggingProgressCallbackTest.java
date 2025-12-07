@@ -1,5 +1,6 @@
 package io.github.junhyeong9812.overload.core.callback;
 
+import io.github.junhyeong9812.overload.core.http.domain.ErrorType;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -121,7 +122,7 @@ class LoggingProgressCallbackTest {
 
       callback.onProgress(50, 100, new RequestResult.Failure(
           "Connection refused",
-          RequestResult.ErrorType.CONNECTION_REFUSED,
+          ErrorType.CONNECTION_REFUSED,
           100
       ));
 

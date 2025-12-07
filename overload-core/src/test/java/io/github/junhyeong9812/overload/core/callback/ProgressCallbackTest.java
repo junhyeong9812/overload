@@ -1,5 +1,6 @@
 package io.github.junhyeong9812.overload.core.callback;
 
+import io.github.junhyeong9812.overload.core.http.domain.ErrorType;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -102,7 +103,7 @@ class ProgressCallbackTest {
       );
 
       callback.onProgress(1, 100, new RequestResult.Success(200, 10));
-      callback.onProgress(2, 100, new RequestResult.Failure("error", RequestResult.ErrorType.TIMEOUT, 100));
+      callback.onProgress(2, 100, new RequestResult.Failure("error", ErrorType.TIMEOUT, 100));
 
       assertThat(callCount.get()).isEqualTo(2);
     }

@@ -4,6 +4,7 @@ import io.github.junhyeong9812.overload.core.callback.LoggingProgressCallback;
 import io.github.junhyeong9812.overload.core.callback.ProgressCallback;
 import io.github.junhyeong9812.overload.core.config.LoadTestConfig;
 import io.github.junhyeong9812.overload.core.http.application.port.HttpClientPort;
+import io.github.junhyeong9812.overload.core.http.domain.ErrorType;
 import io.github.junhyeong9812.overload.core.http.domain.HttpRequest;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
 import io.github.junhyeong9812.overload.core.metric.domain.TestResult;
@@ -260,7 +261,7 @@ class LoadTesterTest {
     public RequestResult send(HttpRequest request) {
       return new RequestResult.Failure(
           "Connection refused",
-          RequestResult.ErrorType.CONNECTION_REFUSED,
+          ErrorType.CONNECTION_REFUSED,
           100
       );
     }

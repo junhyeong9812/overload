@@ -1,5 +1,6 @@
 package io.github.junhyeong9812.overload.core.metric.application;
 
+import io.github.junhyeong9812.overload.core.http.domain.ErrorType;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
 import io.github.junhyeong9812.overload.core.metric.domain.TestResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +45,7 @@ class MetricAggregatorTest {
       aggregator.start();
       aggregator.record(new RequestResult.Failure(
           "timeout",
-          RequestResult.ErrorType.TIMEOUT,
+          ErrorType.TIMEOUT,
           5000
       ));
       aggregator.end();

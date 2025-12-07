@@ -2,6 +2,7 @@ package io.github.junhyeong9812.overload.core.http.infrastructure;
 
 import io.github.junhyeong9812.overload.core.config.HttpMethod;
 import io.github.junhyeong9812.overload.core.http.application.port.HttpClientPort;
+import io.github.junhyeong9812.overload.core.http.domain.ErrorType;
 import io.github.junhyeong9812.overload.core.http.domain.HttpRequest;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +49,7 @@ class JdkHttpClientTest {
 
       assertThat(result).isInstanceOf(RequestResult.Failure.class);
       RequestResult.Failure failure = (RequestResult.Failure) result;
-      assertThat(failure.errorType()).isEqualTo(RequestResult.ErrorType.UNKNOWN);
+      assertThat(failure.errorType()).isEqualTo(ErrorType.UNKNOWN);
     }
 
     @Test
