@@ -3,7 +3,7 @@ package io.github.junhyeong9812.overload.core.http.infrastructure;
 import io.github.junhyeong9812.overload.core.http.application.port.HttpClientPort;
 import io.github.junhyeong9812.overload.core.http.domain.HttpRequest;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
-import io.github.junhyeong9812.overload.core.http.domain.RequestResult.ErrorType;
+import io.github.junhyeong9812.overload.core.http.domain.ErrorType;
 
 import java.io.IOException;
 import java.net.ConnectException;
