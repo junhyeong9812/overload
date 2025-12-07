@@ -5,7 +5,7 @@ import io.github.junhyeong9812.overload.scenario.scenario.application.callback.S
 import io.github.junhyeong9812.overload.scenario.scenario.application.service.ScenarioLoadTester;
 import io.github.junhyeong9812.overload.scenario.scenario.domain.*;
 import io.github.junhyeong9812.overload.starter.scenario.dto.*;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import io.github.junhyeong9812.overload.starter.service.ResultBroadcastService;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -17,23 +17,25 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 시나리오 테스트 실행 서비스.
  *
+ * <p>시나리오 테스트를 비동기로 실행하고 WebSocket으로 진행 상황을 전송한다.
+ *
  * @author junhyeong9812
  * @since 1.0.0
  */
 @Service
 public class ScenarioTestService {
 
-  private final SimpMessagingTemplate messagingTemplate;
+  private final ResultBroadcastService broadcastService;
   private final Map<String, ScenarioTestResult> completedTests = new ConcurrentHashMap<>();
   private final Map<String, String> runningTests = new ConcurrentHashMap<>();
 
   /**
    * ScenarioTestService를 생성한다.
    *
-   * @param messagingTemplate WebSocket 메시지 템플릿
+   * @param broadcastService 브로드캐스트 서비스
    */
-  public ScenarioTestService(SimpMessagingTemplate messagingTemplate) {
-    this.messagingTemplate = messagingTemplate;
+  public ScenarioTestService(ResultBroadcastService broadcastService) {
+    this.broadcastService = broadcastService;
   }
 
   /**
@@ -75,7 +77,7 @@ public class ScenarioTestService {
               result.success()
           );
 
-          messagingTemplate.convertAndSend("/topic/scenario/" + testId, message);
+          broadcastService.broadcastScenarioProgress(testId, message);
         };
 
         ScenarioTestResult result = ScenarioLoadTester.run(
@@ -90,12 +92,11 @@ public class ScenarioTestService {
         runningTests.remove(testId);
 
         ScenarioResponse response = ScenarioResponse.from(testId, "COMPLETED", result);
-        messagingTemplate.convertAndSend("/topic/scenario/" + testId + "/complete", response);
+        broadcastService.broadcastScenarioComplete(testId, response);
 
       } catch (Exception e) {
         runningTests.remove(testId);
-        messagingTemplate.convertAndSend("/topic/scenario/" + testId + "/error",
-            Map.of("error", e.getMessage()));
+        broadcastService.broadcastScenarioError(testId, e.getMessage() != null ? e.getMessage() : "Unknown error");
       }
     });
 
