@@ -2,7 +2,6 @@ package io.github.junhyeong9812.overload.core;
 
 import io.github.junhyeong9812.overload.core.callback.LoggingProgressCallback;
 import io.github.junhyeong9812.overload.core.callback.ProgressCallback;
-import io.github.junhyeong9812.overload.core.config.HttpMethod;
 import io.github.junhyeong9812.overload.core.config.LoadTestConfig;
 import io.github.junhyeong9812.overload.core.http.application.port.HttpClientPort;
 import io.github.junhyeong9812.overload.core.http.domain.HttpRequest;
@@ -12,12 +11,17 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+/**
+ * {@link LoadTester} 테스트.
+ *
+ * @author junhyeong9812
+ * @since 1.0.0
+ */
 @DisplayName("LoadTester")
 class LoadTesterTest {
 
@@ -54,7 +58,27 @@ class LoadTesterTest {
 
       MockHttpClient mockClient = new MockHttpClient(200);
 
-      LoadTester.run(config, (completed, total) -> callbackCount.incrementAndGet(), mockClient);
+      LoadTester.run(config, (completed, total, result) ->
+          callbackCount.incrementAndGet(), mockClient);
+
+      assertThat(callbackCount.get()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("simple 콜백과 함께 실행할 수 있다")
+    void runWithSimpleCallback() {
+      AtomicInteger callbackCount = new AtomicInteger(0);
+
+      LoadTestConfig config = LoadTestConfig.builder()
+          .url("https://api.example.com")
+          .totalRequests(10)
+          .concurrency(5)
+          .build();
+
+      MockHttpClient mockClient = new MockHttpClient(200);
+
+      LoadTester.run(config, ProgressCallback.simple((completed, total) ->
+          callbackCount.incrementAndGet()), mockClient);
 
       assertThat(callbackCount.get()).isEqualTo(10);
     }
@@ -73,6 +97,28 @@ class LoadTesterTest {
       TestResult result = LoadTester.run(config, new LoggingProgressCallback(), mockClient);
 
       assertThat(result.totalRequests()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("콜백에서 RequestResult에 접근할 수 있다")
+    void callbackReceivesRequestResult() {
+      AtomicInteger successStatusSum = new AtomicInteger(0);
+
+      LoadTestConfig config = LoadTestConfig.builder()
+          .url("https://api.example.com")
+          .totalRequests(5)
+          .concurrency(2)
+          .build();
+
+      MockHttpClient mockClient = new MockHttpClient(200);
+
+      LoadTester.run(config, (completed, total, result) -> {
+        if (result instanceof RequestResult.Success success) {
+          successStatusSum.addAndGet(success.statusCode());
+        }
+      }, mockClient);
+
+      assertThat(successStatusSum.get()).isEqualTo(1000); // 200 * 5
     }
   }
 
@@ -191,7 +237,7 @@ class LoadTesterTest {
   // ===== Test Doubles =====
 
   /**
-   * 항상 지정된 상태 코드를 반환하는 Mock
+   * 항상 지정된 상태 코드를 반환하는 Mock.
    */
   static class MockHttpClient implements HttpClientPort {
     private final int statusCode;
@@ -207,7 +253,7 @@ class LoadTesterTest {
   }
 
   /**
-   * 항상 실패하는 Mock
+   * 항상 실패하는 Mock.
    */
   static class FailingHttpClient implements HttpClientPort {
     @Override
@@ -221,7 +267,7 @@ class LoadTesterTest {
   }
 
   /**
-   * 가변 지연 시간을 반환하는 Mock
+   * 가변 지연 시간을 반환하는 Mock.
    */
   static class VariableLatencyHttpClient implements HttpClientPort {
     private final AtomicInteger counter = new AtomicInteger(0);
@@ -234,7 +280,7 @@ class LoadTesterTest {
   }
 
   /**
-   * 동시 실행 수를 추적하는 Mock
+   * 동시 실행 수를 추적하는 Mock.
    */
   static class ConcurrencyTrackingHttpClient implements HttpClientPort {
     private final AtomicInteger currentConcurrent = new AtomicInteger(0);

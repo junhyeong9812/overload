@@ -1,22 +1,27 @@
 package io.github.junhyeong9812.overload.core.engine.infrastructure;
 
 import io.github.junhyeong9812.overload.core.callback.ProgressCallback;
-import io.github.junhyeong9812.overload.core.config.HttpMethod;
 import io.github.junhyeong9812.overload.core.config.LoadTestConfig;
 import io.github.junhyeong9812.overload.core.engine.domain.LoadTestEngine;
 import io.github.junhyeong9812.overload.core.http.application.port.HttpClientPort;
+import io.github.junhyeong9812.overload.core.http.domain.HttpRequest;
 import io.github.junhyeong9812.overload.core.http.domain.RequestResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * {@link VirtualThreadEngine} 테스트.
+ *
+ * @author junhyeong9812
+ * @since 1.0.0
+ */
 @DisplayName("VirtualThreadEngine")
 class VirtualThreadEngineTest {
 
@@ -78,7 +83,45 @@ class VirtualThreadEngineTest {
           .concurrency(5)
           .build();
 
-      engine.execute(config, (completed, total) -> callbackCount.incrementAndGet());
+      engine.execute(config, (completed, total, result) -> callbackCount.incrementAndGet());
+
+      assertThat(callbackCount.get()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("콜백에 RequestResult가 전달된다")
+    void callbackReceivesRequestResult() {
+      AtomicInteger successCount = new AtomicInteger(0);
+
+      LoadTestConfig config = LoadTestConfig.builder()
+          .url("https://api.example.com")
+          .totalRequests(5)
+          .concurrency(2)
+          .build();
+
+      engine.execute(config, (completed, total, result) -> {
+        if (result instanceof RequestResult.Success) {
+          successCount.incrementAndGet();
+        }
+      });
+
+      assertThat(successCount.get()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("simple 콜백도 동작한다")
+    void simpleCallbackWorks() {
+      AtomicInteger callbackCount = new AtomicInteger(0);
+
+      LoadTestConfig config = LoadTestConfig.builder()
+          .url("https://api.example.com")
+          .totalRequests(10)
+          .concurrency(5)
+          .build();
+
+      engine.execute(config, ProgressCallback.simple((completed, total) ->
+          callbackCount.incrementAndGet()
+      ));
 
       assertThat(callbackCount.get()).isEqualTo(10);
     }
@@ -108,18 +151,18 @@ class VirtualThreadEngineTest {
   }
 
   /**
-   * 테스트용 Mock HTTP 클라이언트
+   * 테스트용 Mock HTTP 클라이언트.
    */
   static class MockHttpClient implements HttpClientPort {
 
     @Override
-    public RequestResult send(io.github.junhyeong9812.overload.core.http.domain.HttpRequest request) {
+    public RequestResult send(HttpRequest request) {
       return new RequestResult.Success(200, 10);
     }
   }
 
   /**
-   * 동시 실행 수를 추적하는 HTTP 클라이언트
+   * 동시 실행 수를 추적하는 HTTP 클라이언트.
    */
   static class ConcurrencyTrackingHttpClient implements HttpClientPort {
 
@@ -127,12 +170,11 @@ class VirtualThreadEngineTest {
     private final AtomicInteger maxConcurrent = new AtomicInteger(0);
 
     @Override
-    public RequestResult send(io.github.junhyeong9812.overload.core.http.domain.HttpRequest request) {
+    public RequestResult send(HttpRequest request) {
       int current = currentConcurrent.incrementAndGet();
       maxConcurrent.updateAndGet(max -> Math.max(max, current));
 
       try {
-        // 약간의 지연을 주어 동시성 추적 가능하게
         Thread.sleep(10);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
