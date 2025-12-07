@@ -31,7 +31,17 @@ import java.util.List;
  * System.out.println("RPS: " + result.requestsPerSecond());
  * }</pre>
  *
- * <p><b>콜백과 함께 사용:</b>
+ * <p><b>콜백과 함께 사용 (개별 요청 결과 포함):</b>
+ * <pre>{@code
+ * TestResult result = LoadTester.run(config, (completed, total, requestResult) -> {
+ *     System.out.printf("\rProgress: %d/%d", completed, total);
+ *     if (requestResult instanceof RequestResult.Failure f) {
+ *         System.err.println("Failed: " + f.errorMessage());
+ *     }
+ * });
+ * }</pre>
+ *
+ * <p><b>간단한 콜백 (진행률만):</b>
  * <pre>{@code
  * TestResult result = LoadTester.run(config, (completed, total) ->
  *     System.out.printf("\rProgress: %d/%d", completed, total)
@@ -49,8 +59,10 @@ import java.util.List;
  */
 public final class LoadTester {
 
+  /**
+   * 인스턴스화 방지를 위한 private 생성자.
+   */
   private LoadTester() {
-    // Utility class - 인스턴스화 방지
   }
 
   /**
@@ -68,10 +80,10 @@ public final class LoadTester {
   /**
    * 부하 테스트를 실행한다.
    *
-   * <p>기본 JDK HTTP 클라이언트를 사용한다.
+   * <p>기본 JDK HTTP 클라이언트를 사용하며, 각 요청 완료 시 콜백이 호출된다.
    *
    * @param config   테스트 설정
-   * @param callback 진행 상황 콜백
+   * @param callback 진행 상황 및 개별 요청 결과를 받을 콜백
    * @return 테스트 결과
    */
   public static TestResult run(LoadTestConfig config, ProgressCallback callback) {
@@ -85,8 +97,8 @@ public final class LoadTester {
    * <p>커스텀 HTTP 클라이언트를 사용할 수 있다.
    *
    * @param config     테스트 설정
-   * @param callback   진행 상황 콜백
-   * @param httpClient HTTP 클라이언트
+   * @param callback   진행 상황 및 개별 요청 결과를 받을 콜백
+   * @param httpClient 사용할 HTTP 클라이언트
    * @return 테스트 결과
    */
   public static TestResult run(
@@ -106,5 +118,28 @@ public final class LoadTester {
     }
 
     return aggregator.aggregate();
+  }
+
+  /**
+   * 부하 테스트를 실행한다 (간단한 콜백 버전).
+   *
+   * <p>개별 요청 결과 없이 진행률만 필요한 경우에 사용한다.
+   * 이전 버전과의 호환성을 위해 제공된다.
+   *
+   * <p><b>사용 예시:</b>
+   * <pre>{@code
+   * TestResult result = LoadTester.run(config, (completed, total) ->
+   *     System.out.printf("Progress: %d/%d%n", completed, total)
+   * );
+   * }</pre>
+   *
+   * @param config         테스트 설정
+   * @param simpleCallback 진행률만 받는 간단한 콜백
+   * @return 테스트 결과
+   */
+  public static TestResult run(
+      LoadTestConfig config,
+      ProgressCallback.SimpleProgressCallback simpleCallback) {
+    return run(config, ProgressCallback.simple(simpleCallback));
   }
 }
