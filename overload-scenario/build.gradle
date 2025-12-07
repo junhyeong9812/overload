@@ -1,0 +1,95 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+    id 'tech.yanand.maven-central-publish'
+}
+
+description = 'Overload Scenario - Multi-step Load Testing for MSA'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+dependencies {
+    // Core 모듈 의존
+    api project(':overload-core')
+
+    // JSONPath 추출용
+    implementation 'com.jayway.jsonpath:json-path:2.9.0'
+
+    // 테스트
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+    testImplementation 'org.assertj:assertj-core:3.26.0'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// ============================================
+// Maven Central 배포 설정
+// ============================================
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            groupId = 'io.github.junhyeong9812'
+            artifactId = 'overload-scenario'
+            version = project.version
+
+            pom {
+                name = 'Overload Scenario'
+                description = 'Multi-step scenario load testing for MSA environments'
+                url = 'https://github.com/junhyeong9812/overload'
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'junhyeong9812'
+                        name = 'Junhyeong Park'
+                        email = 'junhyeong9812@gmail.com'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/junhyeong9812/overload.git'
+                    developerConnection = 'scm:git:ssh://github.com:junhyeong9812/overload.git'
+                    url = 'https://github.com/junhyeong9812/overload'
+                }
+            }
+        }
+    }
+}
+
+signing {
+    def signingKeyId = findProperty('signing.keyId') ?: System.getenv('SIGNING_KEY_ID')
+    def signingKey = findProperty('signing.key') ?: System.getenv('GPG_SIGNING_KEY')
+    def signingPassword = findProperty('signing.password') ?: System.getenv('SIGNING_PASSWORD')
+
+    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+    sign publishing.publications.mavenJava
+}
+
+mavenCentral {
+    authToken = System.getenv('MAVEN_CENTRAL_TOKEN')
+    publishingType = 'USER_MANAGED'
+}
+
+// Javadoc 인코딩 설정
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
