@@ -29,30 +29,24 @@ public sealed interface RequestResult
     permits RequestResult.Success, RequestResult.Failure {
 
   /**
-   * 요청 응답 시간(지연 시간)을 밀리초 단위로 반환한다.
+   * 요청 지연 시간을 반환한다.
    *
-   * @return 요청 처리에 소요된 시간 (밀리초)
+   * @return 지연 시간 (밀리초)
    */
   long latencyMs();
 
   /**
-   * 성공한 HTTP 요청 결과를 표현하는 레코드.
+   * 성공한 요청 결과.
    *
-   * <p>HTTP 응답이 정상적으로 수신된 경우를 나타낸다.
-   * HTTP 상태 코드가 4xx, 5xx인 경우도 응답을 받았다면 Success로 처리된다.
-   *
-   * @param statusCode HTTP 응답 상태 코드 (예: 200, 404, 500)
-   * @param latencyMs  응답 시간 (밀리초)
+   * @param statusCode HTTP 상태 코드
+   * @param latencyMs  지연 시간 (밀리초)
    */
-  record Success(
-      int statusCode,
-      long latencyMs
-  ) implements RequestResult {
+  record Success(int statusCode, long latencyMs) implements RequestResult {
 
     /**
-     * HTTP 상태 코드가 2xx 범위(성공)인지 확인한다.
+     * HTTP 성공 응답인지 확인한다.
      *
-     * @return 상태 코드가 200-299 범위이면 {@code true}
+     * @return 2xx 응답이면 true
      */
     public boolean isHttpSuccess() {
       return statusCode >= 200 && statusCode < 300;
@@ -60,36 +54,12 @@ public sealed interface RequestResult
   }
 
   /**
-   * 실패한 HTTP 요청 결과를 표현하는 레코드.
+   * 실패한 요청 결과.
    *
-   * <p>네트워크 오류, 타임아웃, 연결 거부 등 HTTP 응답을 받지 못한 경우를 나타낸다.
-   *
-   * @param errorMessage 상세 오류 메시지
-   * @param errorType    오류 유형 분류
-   * @param latencyMs    실패까지 소요된 시간 (밀리초)
+   * @param errorMessage 에러 메시지
+   * @param errorType    에러 유형
+   * @param latencyMs    지연 시간 (밀리초)
    */
-  record Failure(
-      String errorMessage,
-      ErrorType errorType,
-      long latencyMs
-  ) implements RequestResult {
-  }
-
-  /**
-   * HTTP 요청 실패 유형을 분류하는 열거형.
-   */
-  enum ErrorType {
-
-    /** 요청 타임아웃 */
-    TIMEOUT,
-
-    /** 연결 거부 */
-    CONNECTION_REFUSED,
-
-    /** 연결 리셋 */
-    CONNECTION_RESET,
-
-    /** 알 수 없는 오류 */
-    UNKNOWN
+  record Failure(String errorMessage, ErrorType errorType, long latencyMs) implements RequestResult {
   }
 }
