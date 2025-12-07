@@ -10,57 +10,187 @@
     .card-expanded { max-height: 2000px; }
     .log-scroll { max-height: 200px; overflow-y: auto; }
     .progress-ring { transform: rotate(-90deg); }
+    .tab-active { border-bottom: 2px solid #22c55e; color: #22c55e; }
+    .tab-inactive { border-bottom: 2px solid transparent; color: #9ca3af; }
   </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
 <div class="container mx-auto px-4 py-8 max-w-5xl">
 
   <!-- Header -->
-  <div class="flex justify-between items-center mb-8">
+  <div class="flex justify-between items-center mb-6">
     <div>
       <h1 class="text-3xl font-bold text-green-400">🚀 Overload</h1>
       <p class="text-gray-400 text-sm">Virtual Thread Load Testing Dashboard</p>
     </div>
-    <button onclick="addNewTest()"
-            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
-      <span>+</span> New Test
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-6 mb-6 border-b border-gray-700">
+    <button id="tabLoadTest" onclick="switchTab('loadTest')"
+            class="tab-active pb-3 px-2 font-semibold transition">
+      ⚡ Load Test
+    </button>
+    <button id="tabScenario" onclick="switchTab('scenario')"
+            class="tab-inactive pb-3 px-2 font-semibold transition hover:text-gray-300">
+      📋 Scenario Test
     </button>
   </div>
 
-  <!-- Test Cards Container -->
-  <div id="testCards" class="space-y-4">
-    <!-- Cards will be dynamically added here -->
+  <!-- ==================== LOAD TEST TAB ==================== -->
+  <div id="loadTestContent">
+    <div class="flex justify-end mb-4">
+      <button onclick="addNewTest()"
+              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+        <span>+</span> New Test
+      </button>
+    </div>
+
+    <div id="testCards" class="space-y-4"></div>
+
+    <div id="emptyState" class="text-center py-16 text-gray-500">
+      <div class="text-6xl mb-4">📊</div>
+      <p class="text-xl mb-4">No active tests</p>
+      <button onclick="addNewTest()"
+              class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+        Start Your First Test
+      </button>
+    </div>
   </div>
 
-  <!-- Empty State -->
-  <div id="emptyState" class="text-center py-16 text-gray-500">
-    <div class="text-6xl mb-4">📊</div>
-    <p class="text-xl mb-4">No active tests</p>
-    <button onclick="addNewTest()"
-            class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition">
-      Start Your First Test
-    </button>
+  <!-- ==================== SCENARIO TEST TAB ==================== -->
+  <div id="scenarioContent" class="hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left: Scenario Builder -->
+      <div class="bg-gray-800 rounded-xl p-6">
+        <h2 class="text-lg font-semibold mb-4">📝 Scenario Builder</h2>
+
+        <div class="mb-4">
+          <label class="block text-xs text-gray-400 mb-1">Scenario Name</label>
+          <input type="text" id="scenarioName" placeholder="My Scenario"
+                 class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm">
+        </div>
+
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs text-gray-400">Steps</label>
+            <button onclick="addStep()"
+                    class="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-xs transition">
+              + Add Step
+            </button>
+          </div>
+          <div id="stepsContainer" class="space-y-3 max-h-80 overflow-y-auto"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Iterations</label>
+            <input type="number" id="scenarioIterations" value="10" min="1"
+                   class="w-full px-3 py-2 bg-gray-700 rounded-lg outline-none text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Concurrency</label>
+            <input type="number" id="scenarioConcurrency" value="5" min="1"
+                   class="w-full px-3 py-2 bg-gray-700 rounded-lg outline-none text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Timeout (ms)</label>
+            <input type="number" id="scenarioTimeout" value="30000" min="1000"
+                   class="w-full px-3 py-2 bg-gray-700 rounded-lg outline-none text-sm">
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-xs text-gray-400 mb-1">Failure Strategy</label>
+          <select id="failureStrategy"
+                  class="w-full px-3 py-2 bg-gray-700 rounded-lg outline-none text-sm">
+            <option value="STOP">STOP - Stop on first failure</option>
+            <option value="SKIP">SKIP - Skip failed step</option>
+            <option value="RETRY">RETRY - Retry failed step</option>
+          </select>
+        </div>
+
+        <button onclick="runScenario()" id="runScenarioBtn"
+                class="w-full py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition">
+          ▶ Run Scenario
+        </button>
+      </div>
+
+      <!-- Right: Results -->
+      <div class="bg-gray-800 rounded-xl p-6">
+        <h2 class="text-lg font-semibold mb-4">📊 Results</h2>
+
+        <div id="scenarioProgressSection" class="hidden mb-4">
+          <div class="flex justify-between text-xs text-gray-400 mb-1">
+            <span>Progress</span>
+            <span id="scenarioProgressText">0%</span>
+          </div>
+          <div class="w-full bg-gray-700 rounded-full h-2">
+            <div id="scenarioProgressBar" class="bg-green-500 h-2 rounded-full transition-all duration-300"
+                 style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div id="scenarioSummarySection" class="hidden mb-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-700 rounded-lg p-3">
+              <div class="text-xl font-bold text-green-400" id="scenarioSuccessRate">0%</div>
+              <div class="text-xs text-gray-400">Success Rate</div>
+            </div>
+            <div class="bg-gray-700 rounded-lg p-3">
+              <div class="text-xl font-bold text-blue-400" id="scenarioPerSec">0</div>
+              <div class="text-xs text-gray-400">Scenarios/sec</div>
+            </div>
+            <div class="bg-gray-700 rounded-lg p-3">
+              <div class="text-xl font-bold text-white" id="scenarioCompleted">0/0</div>
+              <div class="text-xs text-gray-400">Completed</div>
+            </div>
+            <div class="bg-gray-700 rounded-lg p-3">
+              <div class="text-xl font-bold text-yellow-400" id="scenarioAvgDuration">0ms</div>
+              <div class="text-xs text-gray-400">Avg Duration</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="stepStatsSection" class="hidden">
+          <h3 class="text-sm font-semibold mb-2">Step Statistics</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+              <tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-2">Step</th>
+                <th class="text-right py-2">Success</th>
+                <th class="text-right py-2">Avg</th>
+                <th class="text-right py-2">Max</th>
+              </tr>
+              </thead>
+              <tbody id="stepStatsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="scenarioEmptyState" class="text-center text-gray-500 py-12">
+          <div class="text-4xl mb-2">📋</div>
+          <p>Run a scenario to see results</p>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
 
-<!-- Card Template -->
+<!-- Load Test Card Template -->
 <template id="cardTemplate">
   <div class="test-card bg-gray-800 rounded-lg overflow-hidden transition-all duration-300" data-test-id="">
-    <!-- Collapsed Header (Always Visible) -->
     <div class="card-header flex items-center gap-4 p-4 cursor-pointer" onclick="toggleCard(this)">
-      <!-- Status Indicator -->
       <div class="status-ring flex-shrink-0">
         <svg class="w-12 h-12" viewBox="0 0 36 36">
           <circle cx="18" cy="18" r="15.5" fill="none" stroke="#374151" stroke-width="3"/>
           <circle class="progress-circle progress-ring" cx="18" cy="18" r="15.5" fill="none"
-                  stroke="#22c55e" stroke-width="3" stroke-dasharray="0 100"
-                  stroke-linecap="round"/>
+                  stroke="#22c55e" stroke-width="3" stroke-dasharray="0 100" stroke-linecap="round"/>
           <text x="18" y="20" text-anchor="middle" class="text-xs fill-current" style="font-size: 8px;">0%</text>
         </svg>
       </div>
-
-      <!-- Test Info -->
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <span class="method-badge bg-blue-600 text-xs px-2 py-0.5 rounded font-mono">GET</span>
@@ -70,15 +200,11 @@
           <span class="completed-count">0</span> / <span class="total-count">0</span> requests
         </div>
       </div>
-
-      <!-- Action Button -->
       <div class="flex-shrink-0">
         <button class="action-btn bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-semibold transition">
           ▶ Run
         </button>
       </div>
-
-      <!-- Expand/Collapse Icon -->
       <div class="expand-icon text-gray-500 transition-transform duration-300">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -86,9 +212,7 @@
       </div>
     </div>
 
-    <!-- Expanded Content -->
     <div class="card-body border-t border-gray-700 p-4 hidden">
-      <!-- Configuration -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div class="space-y-3">
           <div class="flex gap-2">
@@ -115,7 +239,6 @@
             </div>
           </div>
         </div>
-
         <div class="space-y-2">
           <details>
             <summary class="text-xs text-gray-400 cursor-pointer hover:text-white">Headers (JSON)</summary>
@@ -130,7 +253,6 @@
         </div>
       </div>
 
-      <!-- Progress Bar -->
       <div class="mb-4">
         <div class="flex justify-between text-xs text-gray-400 mb-1">
           <span>Progress</span>
@@ -141,7 +263,6 @@
         </div>
       </div>
 
-      <!-- Live Request Logs -->
       <div class="mb-4">
         <div class="flex justify-between items-center mb-2">
           <span class="text-xs text-gray-400">📋 Live Requests</span>
@@ -152,7 +273,6 @@
         </div>
       </div>
 
-      <!-- Results (Hidden until complete) -->
       <div class="results-section hidden">
         <div class="text-xs text-gray-400 mb-2">📊 Results</div>
         <div class="grid grid-cols-3 gap-2 mb-3">
@@ -183,10 +303,45 @@
         </div>
       </div>
 
-      <!-- Card Actions -->
       <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-700">
         <button class="delete-btn text-gray-500 hover:text-red-400 text-sm px-3 py-1">🗑️ Remove</button>
       </div>
+    </div>
+  </div>
+</template>
+
+<!-- Scenario Step Template -->
+<template id="stepTemplate">
+  <div class="bg-gray-700 rounded-lg p-3 step-item" data-step-index="">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-2">
+        <span class="step-number bg-green-600 w-5 h-5 rounded-full flex items-center justify-center text-xs">1</span>
+        <input type="text" placeholder="step-id" class="step-id bg-gray-600 px-2 py-1 rounded text-xs w-20">
+      </div>
+      <button class="text-red-400 hover:text-red-300 remove-step text-sm">✕</button>
+    </div>
+    <div class="grid grid-cols-4 gap-2 mb-2">
+      <select class="step-method bg-gray-600 px-2 py-1 rounded text-xs">
+        <option value="GET">GET</option>
+        <option value="POST">POST</option>
+        <option value="PUT">PUT</option>
+        <option value="DELETE">DELETE</option>
+        <option value="PATCH">PATCH</option>
+      </select>
+      <input type="text" placeholder="URL" class="step-url col-span-3 bg-gray-600 px-2 py-1 rounded text-xs">
+    </div>
+    <details class="mb-1">
+      <summary class="text-xs text-gray-400 cursor-pointer">Headers & Body</summary>
+      <div class="mt-1 space-y-1">
+        <input type="text" placeholder='Headers: {"Authorization": "Bearer ${login.token}"}'
+               class="step-headers w-full bg-gray-600 px-2 py-1 rounded text-xs">
+        <input type="text" placeholder='Body: {"username": "test"}'
+               class="step-body w-full bg-gray-600 px-2 py-1 rounded text-xs">
+      </div>
+    </details>
+    <div>
+      <input type="text" placeholder='Extract: {"token": "$.data.accessToken"}'
+             class="step-extract w-full bg-gray-600 px-2 py-1 rounded text-xs">
     </div>
   </div>
 </template>
@@ -196,22 +351,62 @@
   const defaultConcurrency = /*[[${defaults.concurrency}]]*/ 10;
   const defaultRequests = /*[[${defaults.requests}]]*/ 100;
 
+  // ==================== TAB MANAGEMENT ====================
+  function switchTab(tab) {
+    const loadTestTab = document.getElementById('tabLoadTest');
+    const scenarioTab = document.getElementById('tabScenario');
+    const loadTestContent = document.getElementById('loadTestContent');
+    const scenarioContent = document.getElementById('scenarioContent');
+
+    if (tab === 'loadTest') {
+      loadTestTab.className = 'tab-active pb-3 px-2 font-semibold transition';
+      scenarioTab.className = 'tab-inactive pb-3 px-2 font-semibold transition hover:text-gray-300';
+      loadTestContent.classList.remove('hidden');
+      scenarioContent.classList.add('hidden');
+    } else {
+      loadTestTab.className = 'tab-inactive pb-3 px-2 font-semibold transition hover:text-gray-300';
+      scenarioTab.className = 'tab-active pb-3 px-2 font-semibold transition';
+      loadTestContent.classList.add('hidden');
+      scenarioContent.classList.remove('hidden');
+
+      if (document.querySelectorAll('.step-item').length === 0) {
+        addStep();
+      }
+    }
+  }
+
+  // ==================== SHARED STATE ====================
   let tests = new Map();
   let cardCounter = 0;
   let ws = null;
+  let stepCount = 0;
+  let currentScenarioTestId = null;
 
+  // ==================== INIT ====================
   document.addEventListener('DOMContentLoaded', () => {
     connectWebSocket();
     loadActiveTests();
   });
 
+  // ==================== WEBSOCKET (통합) ====================
   function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${protocol}//${window.location.host}${basePath}/ws`);
 
     ws.onmessage = function(event) {
       const data = JSON.parse(event.data);
-      updateTestProgress(data);
+
+      // 시나리오 메시지 처리
+      if (data.type === 'SCENARIO_PROGRESS') {
+        handleScenarioProgress(data.testId, data.data);
+      } else if (data.type === 'SCENARIO_COMPLETE') {
+        handleScenarioComplete(data.testId, data.data);
+      } else if (data.type === 'SCENARIO_ERROR') {
+        handleScenarioError(data.testId, data.error);
+      } else {
+        // 기존 Load Test 메시지
+        updateTestProgress(data);
+      }
     };
 
     ws.onclose = function() {
@@ -219,6 +414,7 @@
     };
   }
 
+  // ==================== LOAD TEST FUNCTIONS (기존 유지) ====================
   function loadActiveTests() {
     fetch(`${basePath}/api/tests/active`)
     .then(res => res.json())
@@ -257,47 +453,25 @@
     const template = document.getElementById('cardTemplate');
     const card = template.content.cloneNode(true).querySelector('.test-card');
     card.id = `card-${++cardCounter}`;
-
     card.querySelector('.concurrency-input').value = defaultConcurrency;
     card.querySelector('.requests-input').value = defaultRequests;
-
     setupCardListeners(card);
-
     document.getElementById('testCards').appendChild(card);
     return card;
   }
 
   function setupCardListeners(card) {
-    const actionBtn = card.querySelector('.action-btn');
-    const deleteBtn = card.querySelector('.delete-btn');
-    const clearLogsBtn = card.querySelector('.clear-logs-btn');
-    const urlInput = card.querySelector('.url-input');
-    const methodSelect = card.querySelector('.method-select');
-
-    actionBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleAction(card);
-    });
-
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeCard(card);
-    });
-
-    clearLogsBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      clearLogs(card);
-    });
-
-    urlInput.addEventListener('input', () => updateCardHeader(card));
-    methodSelect.addEventListener('change', () => updateCardHeader(card));
+    card.querySelector('.action-btn').addEventListener('click', (e) => { e.stopPropagation(); handleAction(card); });
+    card.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); removeCard(card); });
+    card.querySelector('.clear-logs-btn').addEventListener('click', (e) => { e.stopPropagation(); clearLogs(card); });
+    card.querySelector('.url-input').addEventListener('input', () => updateCardHeader(card));
+    card.querySelector('.method-select').addEventListener('change', () => updateCardHeader(card));
   }
 
   function toggleCard(header) {
     const card = header.closest('.test-card');
     const body = card.querySelector('.card-body');
     const icon = card.querySelector('.expand-icon');
-
     body.classList.toggle('hidden');
     icon.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
   }
@@ -305,22 +479,14 @@
   function handleAction(card) {
     const testId = card.dataset.testId;
     const status = tests.get(testId)?.status;
-
-    if (status === 'RUNNING') {
-      stopTest(card);
-    } else if (status === 'COMPLETED' || status === 'FAILED' || status === 'CANCELLED') {
-      viewResults(card);
-    } else {
-      startTest(card);
-    }
+    if (status === 'RUNNING') stopTest(card);
+    else if (status === 'COMPLETED' || status === 'FAILED' || status === 'CANCELLED') viewResults(card);
+    else startTest(card);
   }
 
   function startTest(card) {
     const url = card.querySelector('.url-input').value.trim();
-    if (!url) {
-      alert('Please enter a URL');
-      return;
-    }
+    if (!url) { alert('Please enter a URL'); return; }
 
     const request = {
       url: url,
@@ -343,69 +509,45 @@
     .then(res => res.json())
     .then(data => {
       card.dataset.testId = data.testId;
-      tests.set(data.testId, {
-        cardId: card.id,
-        status: 'RUNNING',
-        url: request.url,
-        method: request.method
-      });
+      tests.set(data.testId, { cardId: card.id, status: 'RUNNING', url: request.url, method: request.method });
       setCardStatus(card, 'RUNNING');
     })
-    .catch(err => {
-      setCardStatus(card, 'FAILED');
-      alert('Failed to start test: ' + err.message);
-    });
+    .catch(err => { setCardStatus(card, 'FAILED'); alert('Failed to start test: ' + err.message); });
   }
 
   function stopTest(card) {
     const testId = card.dataset.testId;
-    if (testId) {
-      fetch(`${basePath}/api/tests/${testId}`, {method: 'DELETE'});
-    }
+    if (testId) fetch(`${basePath}/api/tests/${testId}`, {method: 'DELETE'});
   }
 
   function viewResults(card) {
     const body = card.querySelector('.card-body');
-    if (body.classList.contains('hidden')) {
-      toggleCard(card.querySelector('.card-header'));
-    }
+    if (body.classList.contains('hidden')) toggleCard(card.querySelector('.card-header'));
     card.querySelector('.results-section').scrollIntoView({behavior: 'smooth'});
   }
 
   function updateTestProgress(data) {
     const testState = tests.get(data.testId);
     if (!testState) return;
-
     const card = document.getElementById(testState.cardId);
     if (!card) return;
 
     const percent = data.total > 0 ? (data.completed / data.total * 100) : 0;
     updateProgressUI(card, percent, data.completed, data.total);
-
-    if (data.recentLogs && data.recentLogs.length > 0) {
-      updateLogs(card, data.recentLogs);
-    }
-
+    if (data.recentLogs && data.recentLogs.length > 0) updateLogs(card, data.recentLogs);
     testState.status = data.status;
     setCardStatus(card, data.status);
-
-    if (data.status === 'COMPLETED') {
-      fetchResults(card, data.testId);
-    }
+    if (data.status === 'COMPLETED') fetchResults(card, data.testId);
   }
 
   function updateProgressUI(card, percent, completed, total) {
     card.querySelector('.progress-bar').style.width = percent + '%';
     card.querySelector('.progress-text').textContent = percent.toFixed(1) + '%';
-
     const circle = card.querySelector('.progress-circle');
     const circumference = 2 * Math.PI * 15.5;
     const offset = circumference - (percent / 100) * circumference;
     circle.setAttribute('stroke-dasharray', `${circumference - offset} ${offset}`);
-
-    const ringText = card.querySelector('.status-ring text');
-    ringText.textContent = Math.round(percent) + '%';
-
+    card.querySelector('.status-ring text').textContent = Math.round(percent) + '%';
     card.querySelector('.completed-count').textContent = completed.toLocaleString();
     card.querySelector('.total-count').textContent = total.toLocaleString();
   }
@@ -414,123 +556,67 @@
     const logContainer = card.querySelector('.log-scroll');
     const emptyMsg = logContainer.querySelector('.log-empty');
     if (emptyMsg) emptyMsg.remove();
-
-    while (logContainer.children.length > 50) {
-      logContainer.lastChild.remove();
-    }
+    while (logContainer.children.length > 50) logContainer.lastChild.remove();
 
     logs.reverse().forEach(log => {
-      const existingLog = logContainer.querySelector(`[data-req="${log.requestNumber}"]`);
-      if (existingLog) return;
-
+      if (logContainer.querySelector(`[data-req="${log.requestNumber}"]`)) return;
       const logEl = document.createElement('div');
       logEl.dataset.req = log.requestNumber;
       logEl.className = 'flex items-center gap-2 py-0.5';
-
       const icon = log.success ? '✅' : '❌';
       const statusClass = log.success ? 'text-green-400' : 'text-red-400';
       const statusText = log.success ? log.statusCode : 'ERR';
       const errorText = log.error ? ` - ${log.error.substring(0, 30)}` : '';
-
-      logEl.innerHTML = `
-        <span class="text-gray-500 w-12">#${log.requestNumber}</span>
-        <span>${icon}</span>
-        <span class="${statusClass} w-12">${statusText}</span>
-        <span class="text-gray-400 w-16">${log.latencyMs}ms</span>
-        <span class="text-gray-600 truncate text-xs">${errorText}</span>
-      `;
-
+      logEl.innerHTML = `<span class="text-gray-500 w-12">#${log.requestNumber}</span><span>${icon}</span><span class="${statusClass} w-12">${statusText}</span><span class="text-gray-400 w-16">${log.latencyMs}ms</span><span class="text-gray-600 truncate text-xs">${errorText}</span>`;
       logContainer.insertBefore(logEl, logContainer.firstChild);
     });
   }
 
   function clearLogs(card) {
-    const logContainer = card.querySelector('.log-scroll');
-    logContainer.innerHTML = '<div class="log-empty text-gray-600 text-center py-4">No requests yet</div>';
+    card.querySelector('.log-scroll').innerHTML = '<div class="log-empty text-gray-600 text-center py-4">No requests yet</div>';
   }
 
   function fetchResults(card, testId) {
-    fetch(`${basePath}/api/tests/${testId}`)
-    .then(res => res.json())
-    .then(data => {
-      if (data.result) {
-        displayResults(card, data.result);
-      }
-    });
+    fetch(`${basePath}/api/tests/${testId}`).then(res => res.json()).then(data => { if (data.result) displayResults(card, data.result); });
   }
 
   function displayResults(card, result) {
     card.querySelector('.rps-value').textContent = result.requestsPerSecond.toFixed(1);
     card.querySelector('.latency-value').textContent = result.latencyStats.avg.toFixed(0);
     card.querySelector('.success-rate-value').textContent = result.successRate.toFixed(1) + '%';
-
     card.querySelector('.total-reqs').textContent = result.totalRequests.toLocaleString();
     card.querySelector('.success-reqs').textContent = result.successCount.toLocaleString();
     card.querySelector('.failed-reqs').textContent = result.failCount.toLocaleString();
-
     card.querySelector('.p50-value').textContent = result.latencyStats.percentiles.p50 + 'ms';
     card.querySelector('.p90-value').textContent = result.latencyStats.percentiles.p90 + 'ms';
     card.querySelector('.p99-value').textContent = result.latencyStats.percentiles.p99 + 'ms';
-
     card.querySelector('.results-section').classList.remove('hidden');
   }
 
   function setCardStatus(card, status) {
     const btn = card.querySelector('.action-btn');
     const circle = card.querySelector('.progress-circle');
-
-    switch (status) {
-      case 'STARTING':
-        btn.textContent = '⏳ Starting...';
-        btn.disabled = true;
-        btn.className = 'action-btn bg-gray-600 text-white px-4 py-2 rounded text-sm font-semibold';
-        break;
-      case 'RUNNING':
-        btn.textContent = '⬛ Stop';
-        btn.disabled = false;
-        btn.className = 'action-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-semibold transition';
-        circle.setAttribute('stroke', '#22c55e');
-        break;
-      case 'COMPLETED':
-        btn.textContent = '📊 Results';
-        btn.disabled = false;
-        btn.className = 'action-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold transition';
-        circle.setAttribute('stroke', '#22c55e');
-        break;
-      case 'FAILED':
-        btn.textContent = '❌ Failed';
-        btn.disabled = false;
-        btn.className = 'action-btn bg-red-800 text-white px-4 py-2 rounded text-sm font-semibold';
-        circle.setAttribute('stroke', '#ef4444');
-        break;
-      case 'CANCELLED':
-        btn.textContent = '▶ Retry';
-        btn.disabled = false;
-        btn.className = 'action-btn bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded text-sm font-semibold transition';
-        circle.setAttribute('stroke', '#eab308');
-        break;
-      default:
-        btn.textContent = '▶ Run';
-        btn.disabled = false;
-        btn.className = 'action-btn bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-semibold transition';
-    }
+    const configs = {
+      STARTING: { text: '⏳ Starting...', disabled: true, class: 'bg-gray-600', stroke: null },
+      RUNNING: { text: '⬛ Stop', disabled: false, class: 'bg-red-600 hover:bg-red-700', stroke: '#22c55e' },
+      COMPLETED: { text: '📊 Results', disabled: false, class: 'bg-blue-600 hover:bg-blue-700', stroke: '#22c55e' },
+      FAILED: { text: '❌ Failed', disabled: false, class: 'bg-red-800', stroke: '#ef4444' },
+      CANCELLED: { text: '▶ Retry', disabled: false, class: 'bg-yellow-600 hover:bg-yellow-700', stroke: '#eab308' }
+    };
+    const config = configs[status] || { text: '▶ Run', disabled: false, class: 'bg-green-600 hover:bg-green-700', stroke: null };
+    btn.textContent = config.text;
+    btn.disabled = config.disabled;
+    btn.className = `action-btn ${config.class} text-white px-4 py-2 rounded text-sm font-semibold transition`;
+    if (config.stroke) circle.setAttribute('stroke', config.stroke);
   }
 
   function updateCardHeader(card) {
     const url = card.querySelector('.url-input').value || '-';
     const method = card.querySelector('.method-select').value;
-
     card.querySelector('.url-display').textContent = url;
-    card.querySelector('.method-badge').textContent = method;
-
     const badge = card.querySelector('.method-badge');
-    const colors = {
-      GET: 'bg-blue-600',
-      POST: 'bg-green-600',
-      PUT: 'bg-yellow-600',
-      DELETE: 'bg-red-600',
-      PATCH: 'bg-purple-600'
-    };
+    badge.textContent = method;
+    const colors = { GET: 'bg-blue-600', POST: 'bg-green-600', PUT: 'bg-yellow-600', DELETE: 'bg-red-600', PATCH: 'bg-purple-600' };
     badge.className = `method-badge ${colors[method] || 'bg-gray-600'} text-xs px-2 py-0.5 rounded font-mono`;
   }
 
@@ -554,17 +640,130 @@
   }
 
   function updateEmptyState() {
-    const emptyState = document.getElementById('emptyState');
-    const hasCards = document.getElementById('testCards').children.length > 0;
-    emptyState.classList.toggle('hidden', hasCards);
+    document.getElementById('emptyState').classList.toggle('hidden', document.getElementById('testCards').children.length > 0);
   }
 
-  function parseJson(str) {
-    try {
-      return str ? JSON.parse(str) : null;
-    } catch {
-      return null;
+  function parseJson(str) { try { return str ? JSON.parse(str) : null; } catch { return null; } }
+
+  // ==================== SCENARIO TEST FUNCTIONS ====================
+  function addStep() {
+    const template = document.getElementById('stepTemplate');
+    const container = document.getElementById('stepsContainer');
+    const clone = template.content.cloneNode(true);
+
+    stepCount++;
+    const stepItem = clone.querySelector('.step-item');
+    stepItem.dataset.stepIndex = stepCount;
+    stepItem.querySelector('.step-number').textContent = stepCount;
+    stepItem.querySelector('.step-id').value = 'step' + stepCount;
+    stepItem.querySelector('.remove-step').addEventListener('click', function() {
+      stepItem.remove();
+      updateStepNumbers();
+    });
+    container.appendChild(clone);
+  }
+
+  function updateStepNumbers() {
+    document.querySelectorAll('.step-item').forEach((step, index) => {
+      step.querySelector('.step-number').textContent = index + 1;
+    });
+  }
+
+  function collectSteps() {
+    const steps = [];
+    document.querySelectorAll('.step-item').forEach(stepEl => {
+      steps.push({
+        id: stepEl.querySelector('.step-id').value,
+        method: stepEl.querySelector('.step-method').value,
+        url: stepEl.querySelector('.step-url').value,
+        headers: parseJson(stepEl.querySelector('.step-headers').value) || {},
+        body: stepEl.querySelector('.step-body').value || null,
+        extract: parseJson(stepEl.querySelector('.step-extract').value) || {}
+      });
+    });
+    return steps;
+  }
+
+  async function runScenario() {
+    const request = {
+      name: document.getElementById('scenarioName').value || 'Unnamed Scenario',
+      steps: collectSteps(),
+      failureStrategy: document.getElementById('failureStrategy').value,
+      iterations: parseInt(document.getElementById('scenarioIterations').value),
+      concurrency: parseInt(document.getElementById('scenarioConcurrency').value),
+      timeoutMs: parseInt(document.getElementById('scenarioTimeout').value)
+    };
+
+    if (request.steps.length === 0) { alert('At least one step is required'); return; }
+    for (const step of request.steps) {
+      if (!step.id || !step.url) { alert('Step ID and URL are required'); return; }
     }
+
+    document.getElementById('runScenarioBtn').disabled = true;
+    document.getElementById('runScenarioBtn').textContent = 'Running...';
+    document.getElementById('scenarioEmptyState').classList.add('hidden');
+    document.getElementById('scenarioProgressSection').classList.remove('hidden');
+    document.getElementById('scenarioSummarySection').classList.remove('hidden');
+
+    try {
+      const response = await fetch(basePath + '/api/scenarios', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(request)
+      });
+      const data = await response.json();
+      currentScenarioTestId = data.testId;
+    } catch (error) {
+      alert('Failed to start test: ' + error.message);
+      resetScenarioUI();
+    }
+  }
+
+  function handleScenarioProgress(testId, data) {
+    if (testId !== currentScenarioTestId) return;
+    document.getElementById('scenarioProgressBar').style.width = data.progress + '%';
+    document.getElementById('scenarioProgressText').textContent = data.progress.toFixed(1) + '%';
+    document.getElementById('scenarioSuccessRate').textContent = data.successRate.toFixed(1) + '%';
+    document.getElementById('scenarioCompleted').textContent = data.completed + '/' + data.total;
+  }
+
+  function handleScenarioComplete(testId, data) {
+    if (testId !== currentScenarioTestId) return;
+    document.getElementById('scenarioProgressBar').style.width = '100%';
+    document.getElementById('scenarioProgressText').textContent = '100%';
+    document.getElementById('scenarioSuccessRate').textContent = data.successRate.toFixed(1) + '%';
+    document.getElementById('scenarioPerSec').textContent = data.scenariosPerSecond.toFixed(2);
+    document.getElementById('scenarioCompleted').textContent = data.successCount + '/' + data.totalIterations;
+    document.getElementById('scenarioAvgDuration').textContent = data.avgDurationMs.toFixed(0) + 'ms';
+
+    const tbody = document.getElementById('stepStatsBody');
+    tbody.innerHTML = '';
+    document.getElementById('stepStatsSection').classList.remove('hidden');
+
+    (data.stepStats || []).forEach(step => {
+      const row = document.createElement('tr');
+      row.className = 'border-b border-gray-700';
+      row.innerHTML = `
+                <td class="py-2">${step.stepId}</td>
+                <td class="text-right ${step.successRate >= 95 ? 'text-green-400' : 'text-yellow-400'}">${step.successRate.toFixed(1)}%</td>
+                <td class="text-right">${step.avgLatencyMs.toFixed(0)}ms</td>
+                <td class="text-right">${step.maxLatencyMs}ms</td>
+            `;
+      tbody.appendChild(row);
+    });
+
+    resetScenarioUI();
+  }
+
+  function handleScenarioError(testId, error) {
+    if (testId !== currentScenarioTestId) return;
+    alert('Scenario test failed: ' + error);
+    resetScenarioUI();
+  }
+
+  function resetScenarioUI() {
+    document.getElementById('runScenarioBtn').disabled = false;
+    document.getElementById('runScenarioBtn').textContent = '▶ Run Scenario';
   }
 </script>
 </body>
