@@ -35,19 +35,19 @@ public class OverloadApiController {
   }
 
   @GetMapping("/tests/{testId}")
-  public ResponseEntity<Map<String, Object>> getTestStatus(@PathVariable String testId) {
+  public ResponseEntity<Map<String, Object>> getTestStatus(@PathVariable("testId") String testId) {
     return ResponseEntity.ok(loadTestService.getTestStatus(testId));
   }
 
   @DeleteMapping("/tests/{testId}")
-  public ResponseEntity<Void> stopTest(@PathVariable String testId) {
+  public ResponseEntity<Void> stopTest(@PathVariable("testId") String testId) {
     loadTestService.stopTest(testId);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/tests")
   public ResponseEntity<List<Map<String, Object>>> getRecentTests(
-      @RequestParam(defaultValue = "10") int limit) {
+      @RequestParam(value = "limit", defaultValue = "10") int limit) {
     return ResponseEntity.ok(loadTestService.getRecentTests(limit));
   }
 }
