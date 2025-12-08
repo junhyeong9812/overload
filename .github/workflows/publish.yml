@@ -44,6 +44,7 @@ jobs:
       - name: Publish to Maven Central
         run: |
           ./gradlew :overload-core:publishToMavenCentralPortal
+          ./gradlew :overload-scenario:publishToMavenCentralPortal 
           ./gradlew :overload-spring-boot-starter:publishToMavenCentralPortal
         env:
           MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_CENTRAL_TOKEN }}

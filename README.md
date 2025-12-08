@@ -67,15 +67,61 @@ dependencies {
 @SpringBootApplication
 @EnableOverload  // 이것만 추가!
 public class LoadTestServerApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(LoadTestServerApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(LoadTestServerApplication.class, args);
+  }
 }
 ```
 
 ```
 http://localhost:8080/overload → Web UI 접속
 ```
+
+### 방법 3: 시나리오 테스트 (MSA 환경)
+
+여러 API 호출을 순차적으로 연결하는 **시나리오 테스트**를 지원합니다.  
+로그인 → 토큰 추출 → API 호출 같은 실제 사용자 흐름을 시뮬레이션할 수 있습니다.
+
+```yaml
+# scenario.yaml
+name: "User Login Flow"
+
+steps:
+  - id: login
+    method: POST
+    url: https://api.example.com/auth/login
+    headers:
+      Content-Type: application/json
+    body: '{"username": "test", "password": "1234"}'
+    extract:
+      token: "$.data.accessToken"
+      userId: "$.data.userId"
+
+  - id: getProfile
+    method: GET
+    url: "https://api.example.com/users/${login.userId}"
+    headers:
+      Authorization: "Bearer ${login.token}"
+
+  - id: updateProfile
+    method: PUT
+    url: "https://api.example.com/users/${login.userId}"
+    headers:
+      Authorization: "Bearer ${login.token}"
+    body: '{"nickname": "updated"}'
+
+settings:
+  failureStrategy: STOP
+  retryCount: 3
+  retryDelayMs: 1000
+```
+
+```bash
+# CLI로 시나리오 실행
+overload scenario -f scenario.yaml -c 50 -n 1000
+```
+
+**Web UI**에서도 **Scenario Test** 탭을 통해 시나리오를 구성하고 실행할 수 있습니다.
 
 ### 출력 예시
 
@@ -107,6 +153,23 @@ Latency Distribution:
   p99:       720ms
 ```
 
+### 시나리오 테스트 출력 예시
+
+```
+Scenario: User Login Flow
+Steps: 3 | Iterations: 1,000 | Concurrency: 50
+
+Step Statistics:
+  login         ✅ 98.5% | avg: 120ms | max: 450ms
+  getProfile    ✅ 99.2% | avg: 45ms  | max: 180ms
+  updateProfile ✅ 97.8% | avg: 85ms  | max: 320ms
+
+Overall:
+  Success Rate:    95.5%
+  Scenarios/sec:   127.3
+  Total Time:      7.86s
+```
+
 ---
 
 ## 주요 기능
@@ -115,10 +178,102 @@ Latency Distribution:
 - ⚡ **CLI 우선** - 터미널에서 바로 실행, CI/CD 파이프라인 통합
 - 🌐 **Web UI** - `@EnableOverload`로 Postman 스타일 대시보드 활성화
 - 📊 **상세 메트릭** - TPS, Percentile(p50/p90/p95/p99), 히스토그램
+- 🔗 **시나리오 테스트** - 다단계 API 호출, 변수 추출/치환, 실패 전략
 - 📁 **YAML 시나리오** - 복잡한 테스트 시나리오 설정 파일 지원
 - 📈 **결과 내보내기** - JSON, CSV 형식 지원
 - 🔌 **라이브러리 사용** - Java 프로젝트에서 직접 import 가능
 - 🎯 **부하 패턴** - Constant, Ramp-up, Spike, Step 지원
+
+---
+
+## 시나리오 테스트 기능
+
+### 변수 추출 (Extract)
+
+이전 Step의 응답에서 값을 추출하여 다음 Step에서 사용할 수 있습니다.
+
+| 추출 방식 | 문법 | 예시 |
+|-----------|------|------|
+| JSONPath | `$.path.to.value` | `$.data.accessToken` |
+| 배열 접근 | `$.array[index]` | `$.users[0].id` |
+| 헤더 | `$header.Name` | `$header.Set-Cookie` |
+
+```yaml
+steps:
+  - id: login
+    url: https://api.example.com/auth/login
+    method: POST
+    body: '{"username": "test", "password": "1234"}'
+    extract:
+      token: "$.data.accessToken"
+      userId: "$.data.user.id"
+
+  - id: getOrders
+    url: "https://api.example.com/users/${login.userId}/orders"
+    headers:
+      Authorization: "Bearer ${login.token}"
+```
+
+### 변수 치환 (Substitution)
+
+`${stepId.variableName}` 형식으로 이전 Step에서 추출한 값을 참조합니다.
+
+- **URL**: `https://api.example.com/users/${login.userId}`
+- **Headers**: `Authorization: Bearer ${login.token}`
+- **Body**: `{"userId": "${login.userId}"}`
+
+### 실패 전략 (Failure Strategy)
+
+| 전략 | 설명 |
+|------|------|
+| `STOP` | Step 실패 시 해당 시나리오 즉시 중단 (기본값) |
+| `SKIP` | 실패한 Step을 건너뛰고 다음 Step 계속 진행 |
+| `RETRY` | 실패 시 지정 횟수만큼 재시도 |
+
+```yaml
+settings:
+  failureStrategy: RETRY
+  retryCount: 3
+  retryDelayMs: 1000
+```
+
+### Java 코드로 시나리오 실행
+
+```java
+import io.github.junhyeong9812.overload.scenario.*;
+
+Scenario scenario = Scenario.builder()
+    .name("Order Flow Test")
+    .failureStrategy(FailureStrategy.STOP)
+    
+    .step("login", step -> step
+        .post("http://auth-service/api/login")
+        .header("Content-Type", "application/json")
+        .body("{\"username\":\"test\",\"password\":\"1234\"}")
+        .extract("token", "$.data.accessToken")
+        .extract("userId", "$.data.user.id"))
+    
+    .step("getProducts", step -> step
+        .get("http://product-service/api/products")
+        .header("Authorization", "Bearer ${login.token}")
+        .extract("productId", "$.data[0].id"))
+    
+    .step("createOrder", step -> step
+        .post("http://order-service/api/orders")
+        .header("Authorization", "Bearer ${login.token}")
+        .body("{\"userId\":\"${login.userId}\",\"productId\":\"${getProducts.productId}\"}"))
+    
+    .build();
+
+ScenarioTestResult result = ScenarioLoadTester.run(
+    scenario,
+    100,                      // iterations
+    10,                       // concurrency
+    Duration.ofSeconds(30)    // timeout
+);
+
+System.out.println(result.summary());
+```
 
 ---
 
@@ -163,12 +318,34 @@ Examples:
   overload run -f scenario.yaml
 ```
 
+### `overload scenario`
+
+```
+Usage: overload scenario [OPTIONS]
+
+시나리오 기반 부하 테스트를 실행합니다.
+
+Options:
+  -f, --file <PATH>         시나리오 YAML 파일 (필수)
+  -c, --concurrency <N>     동시 시나리오 수 (기본: 10)
+  -n, --iterations <N>      총 반복 수 (기본: 100)
+  --timeout <MS>            요청 타임아웃 (기본: 30000ms)
+  -o, --output <FORMAT>     출력 형식 (text, json)
+  -h, --help                도움말 출력
+
+Examples:
+  # 시나리오 실행
+  overload scenario -f login-flow.yaml -c 50 -n 1000
+```
+
 ---
 
 ## 설정 파일 (YAML)
 
+### 단순 부하 테스트
+
 ```yaml
-# scenario.yaml
+# load-test.yaml
 name: "User API Load Test"
 
 target:
@@ -195,6 +372,54 @@ options:
 output:
   format: json
   file: results.json
+```
+
+### 시나리오 테스트
+
+```yaml
+# scenario.yaml
+name: "E-Commerce Order Flow"
+
+steps:
+  - id: login
+    method: POST
+    url: https://api.example.com/auth/login
+    headers:
+      Content-Type: application/json
+    body: '{"username": "test", "password": "1234"}'
+    extract:
+      token: "$.data.accessToken"
+      userId: "$.data.userId"
+
+  - id: getCart
+    method: GET
+    url: "https://api.example.com/users/${login.userId}/cart"
+    headers:
+      Authorization: "Bearer ${login.token}"
+    extract:
+      cartId: "$.data.id"
+
+  - id: checkout
+    method: POST
+    url: "https://api.example.com/orders"
+    headers:
+      Authorization: "Bearer ${login.token}"
+      Content-Type: application/json
+    body: |
+      {
+        "cartId": "${getCart.cartId}",
+        "paymentMethod": "card"
+      }
+
+settings:
+  failureStrategy: STOP
+  retryCount: 0
+  retryDelayMs: 1000
+
+load:
+  concurrency: 50
+  iterations: 1000
+  timeout: 30000
 ```
 
 ```bash
@@ -225,11 +450,19 @@ overload:
     password: admin123
 ```
 
+**Web UI 기능:**
+- **Load Test 탭**: 단순 HTTP 부하 테스트
+- **Scenario Test 탭**: 다단계 시나리오 테스트
+- **실시간 진행률**: WebSocket 기반 라이브 업데이트
+- **결과 시각화**: 성공률, TPS, Step별 통계
+
 ---
 
 ## 라이브러리로 사용
 
 Maven/Gradle 의존성으로 추가하여 Java 코드에서 직접 사용할 수 있습니다.
+
+### 단순 부하 테스트
 
 ```groovy
 // build.gradle
@@ -257,6 +490,30 @@ System.out.println("TPS: " + result.requestsPerSecond());
 System.out.println("p99: " + result.latencyStats().percentiles().p99() + "ms");
 ```
 
+### 시나리오 테스트
+
+```groovy
+// build.gradle
+dependencies {
+    implementation 'io.github.junhyeong9812:overload-scenario:0.1.0'
+}
+```
+
+```java
+import io.github.junhyeong9812.overload.scenario.*;
+
+Scenario scenario = Scenario.builder()
+    .name("API Flow Test")
+    .step("step1", s -> s.get("http://api/endpoint1").extract("id", "$.data.id"))
+    .step("step2", s -> s.post("http://api/endpoint2/${step1.id}"))
+    .build();
+
+ScenarioTestResult result = ScenarioLoadTester.run(scenario, 100, 10, Duration.ofSeconds(30));
+
+System.out.println("Success Rate: " + result.successRate() + "%");
+System.out.println("Scenarios/sec: " + result.scenariosPerSecond());
+```
+
 ---
 
 ## 프로젝트 구조
@@ -271,6 +528,13 @@ overload/
 │           ├── metric/             # 메트릭 수집/계산
 │           └── config/             # 설정 모델
 │
+├── overload-scenario/              # 시나리오 테스트 모듈
+│   └── src/main/java/
+│       └── io.github.junhyeong9812.overload.scenario/
+│           ├── scenario/           # 시나리오 도메인, 실행기
+│           ├── variable/           # 변수 추출/치환
+│           └── builder/            # DSL 빌더
+│
 ├── overload-cli/                   # CLI 도구 (picocli)
 │   └── src/main/java/
 │       └── io.github.junhyeong9812.overload.cli/
@@ -283,6 +547,7 @@ overload/
 │       └── io.github.junhyeong9812.overload.starter/
 │           ├── controller/         # REST API, 대시보드
 │           ├── service/            # 부하 테스트 서비스
+│           ├── scenario/           # 시나리오 테스트 API
 │           └── websocket/          # 실시간 결과
 │
 ├── docs/
@@ -302,8 +567,9 @@ overload/
 | 모듈 | 기술 | 버전 |
 |------|------|------|
 | **overload-core** | Java, Virtual Threads, JDK HttpClient | 21 |
-| **overload-cli** | picocli, jansi, snakeyaml | Java 25 |
-| **overload-spring-boot-starter** | Spring Boot, WebSocket, Thymeleaf | 3.4.x |
+| **overload-scenario** | Java, JSONPath (json-path) | 21 |
+| **overload-cli** | picocli, jansi, snakeyaml | Java 21 |
+| **overload-spring-boot-starter** | Spring Boot, WebSocket, Thymeleaf | 3.5.x |
 | **Build** | Gradle (멀티 모듈) | 8.11.1 |
 
 ---
@@ -311,18 +577,21 @@ overload/
 ## 로드맵
 
 - [x] 프로젝트 초기 설계
-- [ ] **Phase 1: Core + CLI**
-    - [ ] overload-core 구현
-    - [ ] overload-cli 구현
-    - [ ] 기본 테스트 실행
-- [ ] **Phase 2: Advanced Features**
-    - [ ] YAML 시나리오 지원
+- [x] **Phase 1: Core + CLI**
+    - [x] overload-core 구현
+    - [x] overload-cli 구현
+    - [x] 기본 테스트 실행
+- [x] **Phase 2: Scenario + Advanced Features**
+    - [x] overload-scenario 모듈 구현
+    - [x] 변수 추출/치환 (JSONPath)
+    - [ ] YAML 시나리오 파싱
     - [ ] Ramp-up 부하 패턴
     - [ ] 결과 내보내기 (JSON, CSV)
-- [ ] **Phase 3: Spring Boot Starter**
-    - [ ] @EnableOverload 어노테이션
-    - [ ] Web UI 대시보드
-    - [ ] 실시간 모니터링
+- [x] **Phase 3: Spring Boot Starter**
+    - [x] @EnableOverload 어노테이션
+    - [x] Web UI 대시보드
+    - [x] 실시간 모니터링 (WebSocket)
+    - [x] Scenario Test 탭
 
 > 상세 로드맵은 [구현 계획](docs/implementation/README.md)을 참고하세요.
 
@@ -330,14 +599,14 @@ overload/
 
 ## 비교
 
-| 도구 | 언어 | CLI | Web UI | 특징 |
-|------|------|-----|--------|------|
-| **Overload** | Java (Virtual Threads) | ✅ | ✅ | JVM 환경, 경량, 라이브러리 사용 가능 |
-| wrk | C + Lua | ✅ | ❌ | 고성능, Lua 스크립트 |
-| hey | Go | ✅ | ❌ | 간단한 CLI |
-| k6 | Go + JS | ✅ | ❌ | JavaScript 시나리오, 클라우드 지원 |
-| JMeter | Java | ✅ | ✅ | GUI 기반, 복잡한 시나리오 |
-| Gatling | Scala | ✅ | ❌ | 코드 기반, 상세 리포트 |
+| 도구 | 언어 | CLI | Web UI | 시나리오 | 특징 |
+|------|------|-----|--------|----------|------|
+| **Overload** | Java (Virtual Threads) | ✅ | ✅ | ✅ | JVM 환경, 경량, MSA 지원 |
+| wrk | C + Lua | ✅ | ❌ | ❌ | 고성능, Lua 스크립트 |
+| hey | Go | ✅ | ❌ | ❌ | 간단한 CLI |
+| k6 | Go + JS | ✅ | ❌ | ✅ | JavaScript 시나리오, 클라우드 |
+| JMeter | Java | ✅ | ✅ | ✅ | GUI 기반, 복잡한 설정 |
+| Gatling | Scala | ✅ | ❌ | ✅ | 코드 기반, 상세 리포트 |
 
 ---
 
@@ -348,28 +617,32 @@ overload/
 | [아키텍처](docs/architecture/README.md) | 멀티 모듈 구조 설명 |
 | [구현 계획](docs/implementation/README.md) | 단계별 구현 계획 |
 | [overload-core 설계](docs/implementation/overload-core.md) | Core 모듈 상세 설계 |
+| [overload-scenario 설계](docs/implementation/overload-scenario.md) | Scenario 모듈 상세 설계 |
 | [overload-cli 설계](docs/implementation/overload-cli.md) | CLI 모듈 상세 설계 |
 | [overload-starter 설계](docs/implementation/overload-starter.md) | Starter 모듈 상세 설계 |
 
 ---
-⚠️ Usage Disclaimer
-This tool is intended *only* for performance testing of services you own
-or are explicitly authorized to test.
 
-Unauthorized load testing against external systems may be illegal
-and subject to criminal charges.
+## ⚠️ 사용 주의사항
 
-By using Overload, you agree that you are responsible for the usage and
-compliance with applicable laws and regulations.
+**Usage Disclaimer**
 
-⚠️ 사용 주의사항
-Overload는 사용자 본인이 소유하거나 명시적 허가를 받은 서버에 대한
-성능/부하 테스트 목적에만 사용해야 합니다.
+This tool is intended *only* for performance testing of services you own or are explicitly authorized to test.
 
-허가 없이 타인 서비스에 부하 테스트를 수행하면
-관련 법률에 따라 민형사 처벌 대상이 될 수 있습니다.
+Unauthorized load testing against external systems may be illegal and subject to criminal charges.
+
+By using Overload, you agree that you are responsible for the usage and compliance with applicable laws and regulations.
+
+---
+
+**사용 주의사항**
+
+Overload는 사용자 본인이 소유하거나 명시적 허가를 받은 서버에 대한 성능/부하 테스트 목적에만 사용해야 합니다.
+
+허가 없이 타인 서비스에 부하 테스트를 수행하면 관련 법률에 따라 민형사 처벌 대상이 될 수 있습니다.
 
 본 도구의 사용으로 인해 발생하는 모든 책임은 사용자에게 있습니다.
+
 ---
 
 ## 기여
