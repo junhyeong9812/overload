@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'overload-core/**'
+      - 'overload-scenario/**'
       - 'overload-spring-boot-starter/**'
       - 'build.gradle'
       - 'settings.gradle'
